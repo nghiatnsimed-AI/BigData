@@ -1,0 +1,10 @@
+﻿Chỉ số,Giá trị,Ghi chú
+Tổng số sự kiện (2 kỳ),"109,819,993",Đã loại trùng lặp ở tầng Silver
+Tổng số lượt xem sản phẩm,"104,331,840",event_type = view
+Tổng số lượt mua hàng,"1,659,703",event_type = purchase
+Tỉ lệ chuyển đổi tổng thể,1.591%,mua / xem
+Tổng doanh thu ước tính (USD),"505,126,293","purchase × giá niêm yết, bỏ sản phẩm giá 0"
+Giá trị đơn hàng trung bình (USD),304.35,doanh thu / số lượt mua
+Doanh thu từ sản phẩm không phân loại,"52,801,355",10.4% tổng doanh thu
+Số sản phẩm theo dõi,"226,974",distinct product_id
+Số người dùng có mua hàng,"697,470",customer_type = buyer
