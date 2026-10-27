@@ -1050,4 +1050,38 @@ Không đổi mã pipeline. Chi tiết từng phép xử lý vẫn nằm ở `PH
 gốc, không phải `E-commerce/` — người clone đọc file ngoài trước. File
 `E-commerce/README.md` vẫn giữ bản đầy đủ (KPI, kiến trúc, thứ tự đọc code).
 
+---
+
+## MỐC 10 — Kiểm tra trạng thái Git + dọn `.git` 7,9 GB (27/10/2026)
+
+**Nghi vấn của user:** "hình như chưa đẩy hết file lên git".
+
+**Kết luận kiểm tra:** **đã push đủ**. `git status` = working tree clean,
+`origin/master` = `e9e81a0` = local `HEAD`, `git rev-list --objects origin/master`
+= 92 object. Clone thử sạch từ GitHub → 83 MB, đủ code + tài liệu + PNG + CSV.
+
+**Vấn đề phát hiện được:** `.git` local nặng **7.916 MB** (7,9 GB) trong khi lịch
+sử chỉ chứa ~80 MB blob thật. Nguyên nhân: commit `4850ac0` ("bronze") từng
+stage các file CSV lớn của `Data/bronze/cdc/*_csv/` rồi bị revert/reset, tạo ra
+**10.981 blob unreachable (11,2 GB)** trong object store. Commit này **chưa
+từng** được push (`git merge-base --is-ancestor` → false), nên GitHub không bị
+ảnh hưởng.
+
+**Đã xử lý:**
+1. `git reflog expire --expire=now --expire-unreachable=now --all`
+2. `git gc --prune=now`
+→ `.git` từ **7.916 MB → 38,7 MB**, pack 4 → 1 (35,7 MiB), 0 unreachable.
+`git fsck` sạch, working tree clean, không mất file đang làm việc.
+
+**Quyết định của user (27/10/2026):** giữ nguyên `.gitignore` — **không** đẩy
+tầng Gold Parquet (~20 MB) lên Git, dù nhẹ. Người khác tự chạy `Data_Gold.py`.
+
+**Tài liệu đã cập nhật cho khớp thực tế:**
+- `BigData/README.md` mục 6 (mới): hướng dẫn gửi cho giảng viên — mã qua Git,
+  dữ liệu gốc ~14 GB gửi riêng (khuyến nghị link Kaggle), kèm bảng "gửi kèm
+  gì / dung lượng / giá trị".
+- Sửa số liệu dung lượng: bronze 4,5 → 4,6 GB, silver 4,1 → 4,2 GB.
+- `E-commerce/README.md` mục 13.1 (mới): bảng "cần gửi / cách / dung lượng".
+
+
 

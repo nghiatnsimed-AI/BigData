@@ -263,11 +263,66 @@ Dữ liệu pipeline **không** trên GitHub (file > 100 MB, tổng ~23 GB):
 | Thư mục | Dung lượng local | Cách có lại |
 |---|---|---|
 | `E-commerce/Data/raw/` | ~14 GB CSV | Tải Kaggle (mục 4) |
-| `E-commerce/Data/bronze/` | ~4,5 GB | Chạy `Data_cleaning.py` + `Data_CDC.py` |
-| `E-commerce/Data/silver/` | ~4,1 GB | Chạy `Data_Silver.py` |
+| `E-commerce/Data/bronze/` | ~4,6 GB | Chạy `Data_cleaning.py` + `Data_CDC.py` |
+| `E-commerce/Data/silver/` | ~4,2 GB | Chạy `Data_Silver.py` |
 | `E-commerce/Data/gold/` | ~20 MB Parquet | Chạy `Data_Gold.py` |
 | `E-commerce/.venv311/` | ~650 MB | Mục 4 |
 
-**Có trên Git:** mã Spark, tài liệu, báo cáo Word, log, PNG dashboard, CSV KPI nhỏ.
+**Có trên Git (repo ~38 MB, clone ~83 MB):** mã Spark, tài liệu, báo cáo Word,
+log chạy, 9 PNG dashboard, và CSV KPI. Trong đó 2 CSV lớn nhất là
+`kpi_user_segment.csv` (41 MB) và `kpi_product_ranking.csv` (19 MB) — vẫn dưới
+giới hạn 100 MB nên được giữ lại làm minh chứng.
+
+**Không có trên Git (vì quá nặng):** `Data/raw/` ~14 GB, `Data/bronze/` ~4,6 GB,
+`Data/silver/` ~4,2 GB, `Data/gold/` ~20 MB, `.venv311/` ~650 MB.
+Tầng Gold cũng cố ý không đẩy để repo gọn — người khác tự chạy `Data_Gold.py`.
+
+---
+
+## 6. Gửi cho giảng viên / người khác chạy code
+
+Có 2 việc tách biệt: **mã nguồn** (đã có trên Git) và **dữ liệu** (không thể
+đẩy lên Git vì > 100 MB).
+
+### 6.1 Mã nguồn — gửi link GitHub
+
+```
+https://github.com/nghiatnsimed-AI/BigData
+```
+
+Giảng viên clone rồi làm mục 1 → 4 (Java, winutils, venv, CSV) là chạy được.
+
+### 6.2 Dữ liệu — gửi riêng qua Drive/OneDrive (không qua Git)
+
+**Phương án A (khuyến nghị):** gửi link Kaggle + hướng dẫn tải.
+Bộ dữ liệu công khai, ai cũng tải được, không tốn dung lượng lưu trữ:
+
+```
+https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store
+```
+
+Cách này giữ repo sạch và ai cũng tái lập được kết quả.
+
+**Phương án B:** nén CSV rồi upload lên Google Drive / OneDrive / Dropbox,
+gửi link kèm mật khẩu. Dung lượng nén 2 file CSV ~14 GB rất lớn — nên cân nhắc
+chỉ gửi **kết quả đã tính sẵn** thay vì dữ liệu gốc:
+
+| Gửi kèm | Dung lượng | Giá trị |
+|---|---|---|
+| `Data/dashboard/` (9 PNG + CSV) | ~62 MB | minh chứng trực quan — **đã có trên Git** |
+| `Data/gold/` (8 bảng KPI Parquet) | ~20 MB | người nhận đọc KPI mà không cần Spark — **chưa có trên Git** |
+| `Data/silver/` | ~4,2 GB | bảng sao đầy đủ — quá nặng, không khuyến nghị |
+| `Data/raw/*.csv` | ~14 GB | chỉ cần khi muốn chạy lại toàn bộ pipeline |
+
+> Nếu giảng viên cần **chạy code thật** → phương án A.
+> Nếu giảng viên cần **xem kết quả** → Git đã đủ (PNG + CSV + báo cáo Word).
+
+### 6.3 Kiểm tra trước khi gửi
+
+```powershell
+cd C:\Users\Admin\Documents\CaoHoc\BigData
+git status                      # phải "working tree clean"
+git log --oneline -3
+```
 
 Kiến trúc, KPI, nhật ký lỗi: [`E-commerce/README.md`](E-commerce/README.md).

@@ -676,3 +676,19 @@ file (venv + `.pyc` + `.idea`) thì push sẽ fail hoặc repo phình không dù
 
 Clone máy khác: tải CSV Kaggle vào `Data/raw/`, tạo venv, chạy pipeline theo mục 3.
 
+### 13.1 Gửi cho người khác chạy code
+
+Repo gốc: `https://github.com/nghiatnsimed-AI/BigData` — mã, tài liệu, PNG, CSV
+tổng hợp, báo cáo Word đều có trên đó. Riêng **dữ liệu gốc (~14 GB)** không thể
+đẩy lên Git (giới hạn 100 MB/file) nên cần gửi riêng:
+
+| Cần gửi | Cách | Dung lượng |
+|---|---|---|
+| Dữ liệu gốc | Link Kaggle (tốt nhất, ai cũng tải được) | 14 GB |
+| Kết quả KPI (Parquet) | Đính kèm file zip `Data/gold/` | ~20 MB |
+| Biểu đồ + bảng KPI | Đã có trên Git | ~62 MB |
+| Báo cáo Word | Đã có trên Git | 1,4 MB |
+
+Người nhận làm mục 1 (Java, winutils, venv) → mục 4 (tải CSV) → mục 5 (chạy
+tuần tự) là chạy được toàn bộ pipeline.
+
