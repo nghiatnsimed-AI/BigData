@@ -1027,4 +1027,27 @@ Push một lúc sẽ fail vì file > 100 MB và làm repo hàng chục GB.
 `kpi_user_segment.csv` 42 MB, `kpi_product_ranking.csv` 19 MB.
 Người khác tái tạo bằng Kaggle + chạy pipeline.
 
+---
+
+## MỐC 9 — README: cài Java, môi trường, chạy tuần tự (27/10/2026)
+
+**Vì sao:** README cũ chỉ 4 dòng comment (`Đặt JAVA_HOME = ...`) — người clone không
+biết tải JDK ở đâu, đặt biến môi trường thế nào, vì sao cần `winutils`/`python3.exe`,
+và chạy 8 script theo thứ tự nào thì được coi là xong.
+
+**Đã làm:** viết lại mục 1 và mục 3 của `README.md`.
+
+- Mục 1: JDK 17 (Adoptium, `JAVA_HOME` + `Path`, lệnh kiểm tra), winutils +
+  `hadoop.dll` (đường dẫn khớp `config.py`), Python 3.11 venv, `requirements.txt`,
+  copy `python3.exe`, tải CSV Kaggle, checklist `Test-Path`.
+- Mục 3: bảng 8 bước (lệnh, thời gian, input/output, tiêu chí thành công), lệnh
+  từng script có `Tee-Object` log, chuỗi PowerShell khi đã chắc môi trường.
+
+Không đổi mã pipeline. Chi tiết từng phép xử lý vẫn nằm ở `PHAN_1_QUY_TRINH_HUONG_DAN.md`.
+
+**Bổ sung:** cùng nội dung cài Java / môi trường / chạy tuần tự được ghi vào
+`BigData/README.md` (gốc repo, nơi GitHub hiện khi clone). Git remote gắn ở thư mục
+gốc, không phải `E-commerce/` — người clone đọc file ngoài trước. File
+`E-commerce/README.md` vẫn giữ bản đầy đủ (KPI, kiến trúc, thứ tự đọc code).
+
 

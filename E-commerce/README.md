@@ -5,37 +5,247 @@ xây dựng Data Lake 3 tầng (Raw → Bronze → Silver → Gold) với Apache
 
 ## 1. Yêu cầu môi trường
 
-| Thành phần | Yêu cầu | Ghi chú |
+Làm **đúng thứ tự A → E** trên **Windows**. Spark 3.5.3 chạy trên JVM nên thiếu Java
+hoặc `winutils` thì script Python vẫn mở được, nhưng **không ghi được Parquet**.
+
+| Thành phần | Phiên bản | Vì sao bắt buộc |
 |---|---|---|
-| Java | JDK 17 | Bắt buộc cho Spark 3.5.3 |
-| Python | 3.11 | PySpark 3.5.3 **không** hỗ trợ Python 3.12+ (thiếu module `distutils`) |
-| PySpark | 3.5.3 | `pip install -r requirements.txt` |
-| winutils.exe | bản Windows | Bắt buộc để Spark ghi được file Parquet trên Windows |
+| Java (JDK) | **17** | Spark 3.5.3 chạy trên JVM. JDK 8 quá cũ; JDK 21+ dễ lệch API. |
+| Python | **3.11** (không dùng 3.12+) | PySpark 3.5.3 cần module `distutils`. Python 3.12 đã xóa → worker crash. |
+| PySpark + pandas + pyarrow + matplotlib | xem `requirements.txt` | Spark, đọc Parquet, vẽ dashboard |
+| `winutils.exe` + `hadoop.dll` | Hadoop 3.3.x, Windows 64-bit | Windows không có `chmod`. Thiếu file này → Bronze rỗng. |
+| RAM / đĩa | ≥ 16 GB RAM, **~25 GB trống** | Raw ~14 GB + Bronze/Silver ~9 GB + venv ~0,6 GB |
 
-### 1.1 Cài đặt
+Đường dẫn máy này (khớp `config.py`):
 
-```bash
-# 1. Cài Java 17
-#    Đặt JAVA_HOME = D:\Metadata\jdk-17.0.12
+| Biến / file | Đường dẫn cố định |
+|---|---|
+| `JAVA_HOME` | `D:\Metadata\jdk-17.0.12` |
+| `HADOOP_HOME` | `D:\Metadata\hadoop` |
+| `winutils.exe` | `D:\Metadata\hadoop\bin\winutils.exe` |
+| Venv | `E-commerce\.venv311\` |
 
-# 2. Cài winutils.exe + hadoop.dll
-#    Đặt tại D:\Metadata\hadoop\bin\winutils.exe
-#    Copy hadoop.dll vào %JAVA_HOME%\bin
-#    Đặt HADOOP_HOME = D:\Metadata\hadoop
+Nếu đặt JDK/Hadoop chỗ khác: sửa `JAVA_HOME` trên Windows **và** sửa `hadoop_home`
+trong `config.py` (dòng `hadoop_home = r"D:\Metadata\hadoop"`).
 
-# 3. Tạo môi trường ảo Python 3.11
-python -m venv .venv311
-.\.venv311\Scripts\activate
-pip install -r requirements.txt
+---
 
-# 4. Tạo lệnh python3.exe trong venv (Spark JVM spawn worker bằng tên "python3")
-copy .\.venv311\Scripts\python.exe .\.venv311\Scripts\python3.exe
+### 1.1 Cài Java 17 (JDK)
+
+**Bước 1 — Tải.** Vào <https://adoptium.net/temurin/releases/?version=17>
+(Eclipse Temurin / OpenJDK). Chọn:
+
+- OS: **Windows**
+- Arch: **x64**
+- Package: **JDK**
+- Nên lấy file **`.zip`** (giải nén tay, dễ đặt đúng `D:\Metadata\...`)
+  hoặc **`.msi`** (trình cài có thể tự ghi `JAVA_HOME`).
+
+**Bước 2 — Giải nén (nếu dùng ZIP).** Tạo thư mục `D:\Metadata\` rồi giải nén
+sao cho tồn tại file:
+
+```
+D:\Metadata\jdk-17.0.12\bin\java.exe
 ```
 
-### 1.2 Nếu không có winutils
+Tên thư mục có thể là `jdk-17.0.12+7` tùy bản — đổi tên cho ngắn, hoặc dùng đúng
+tên thư mục thật khi gán `JAVA_HOME`. **Không** trỏ `JAVA_HOME` vào `bin`.
 
-Script sẽ in cảnh báo và **không ghi được file Parquet** — thư mục Bronze sẽ rỗng.
-Hàm `setup_spark()` trong `config.py` tự phát hiện và in hướng dẫn.
+**Bước 3 — Biến môi trường (giao diện Windows).**
+
+1. `Win` → gõ **Environment Variables** → *Edit the system environment variables*.
+2. *Environment Variables…*
+3. Ở **User variables** hoặc **System variables**:
+   - **New…** → Name = `JAVA_HOME` · Value = `D:\Metadata\jdk-17.0.12`
+     (đúng thư mục có `bin\java.exe`, không thêm `\bin`).
+   - Sửa `Path` → **New** → `%JAVA_HOME%\bin`
+4. OK hết. **Đóng mọi cửa sổ PowerShell / Cursor / VS Code rồi mở lại**
+   (biến môi trường chỉ có hiệu lực ở tiến trình mới).
+
+**Bước 4 — Kiểm tra.** Mở **PowerShell mới**:
+
+```powershell
+java -version
+echo $env:JAVA_HOME
+```
+
+Kết quả đúng dạng:
+
+```
+openjdk version "17.0.12" 2024-07-16
+OpenJDK Runtime Environment Temurin-17.0.12+7 (...)
+OpenJDK 64-Bit Server VM (...)
+```
+
+`JAVA_HOME` in ra `D:\Metadata\jdk-17.0.12`.
+
+| Hiện tượng | Cách xử lý |
+|---|---|
+| `java` không phải lệnh | Chưa thêm `%JAVA_HOME%\bin` vào `Path`, hoặc chưa mở lại terminal |
+| In ra Java 8 / 11 / 21 | Máy có nhiều JDK. Đưa `%JAVA_HOME%\bin` **lên đầu** `Path` |
+| `JAVA_HOME` trống | Tạo biến đúng tên `JAVA_HOME`, không viết nhầm `JAVA_HONE` |
+
+---
+
+### 1.2 Cài `winutils.exe` + `hadoop.dll` (chỉ Windows)
+
+Spark ghi Parquet qua Hadoop FileSystem. Trên Linux có `chmod`; Windows thì Hadoop
+gọi `winutils.exe`. **Thiếu → job chạy xong phần tính toán nhưng không ghi file.**
+
+**Bước 1 — Tải.** Lấy bản **Hadoop 3.3.x, Windows 64-bit**. Nguồn thường dùng:
+<https://github.com/cdarlint/winutils> → thư mục `hadoop-3.3.5/bin/`
+(hoặc 3.3.6). Cần tối thiểu hai file:
+
+- `winutils.exe`
+- `hadoop.dll`
+
+**Bước 2 — Đặt đúng chỗ** (khớp `config.py`):
+
+```
+D:\Metadata\hadoop\bin\winutils.exe
+D:\Metadata\hadoop\bin\hadoop.dll
+```
+
+**Bước 3 — Copy `hadoop.dll` vào JDK** (JVM load native lib từ đây):
+
+```powershell
+Copy-Item D:\Metadata\hadoop\bin\hadoop.dll $env:JAVA_HOME\bin\hadoop.dll -Force
+```
+
+**Bước 4 — `HADOOP_HOME`.** Tạo biến môi trường:
+
+- Name = `HADOOP_HOME`
+- Value = `D:\Metadata\hadoop`  ← **không** thêm `\bin`
+
+`config.py` cũng tự gán `HADOOP_HOME` khi thấy `winutils.exe`, nhưng đặt biến
+hệ thống giúp các công cụ khác (Spark UI, lệnh ngoài Python) không báo unset.
+
+**Bước 5 — Kiểm tra:**
+
+```powershell
+Test-Path D:\Metadata\hadoop\bin\winutils.exe
+Test-Path D:\Metadata\hadoop\bin\hadoop.dll
+Test-Path "$env:JAVA_HOME\bin\hadoop.dll"
+echo $env:HADOOP_HOME
+```
+
+Cả ba `Test-Path` phải là `True`. `HADOOP_HOME` = `D:\Metadata\hadoop`.
+
+---
+
+### 1.3 Python 3.11 + venv + thư viện
+
+**Không dùng Python 3.12/3.13** cho dự án này.
+
+**Bước 1 — Cài Python 3.11.** Tải <https://www.python.org/downloads/release/python-3119/>
+bản Windows installer 64-bit. Khi cài:
+
+- Tick **Add python.exe to PATH**
+- Giữ *Install launcher*
+
+Kiểm tra (PowerShell mới):
+
+```powershell
+py -3.11 --version
+```
+
+Phải in `Python 3.11.x`. Nếu `py -3.11` không có, gỡ Python 3.12 khỏi PATH
+hoặc cài lại 3.11.
+
+**Bước 2 — Tạo venv trong thư mục dự án:**
+
+```powershell
+cd C:\Users\Admin\Documents\CaoHoc\BigData\E-commerce
+
+py -3.11 -m venv .venv311
+.\.venv311\Scripts\Activate.ps1
+python --version
+```
+
+`python --version` phải là 3.11.x. Nếu PowerShell chặn script:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+rồi `Activate.ps1` lại.
+
+**Bước 3 — Cài thư viện:**
+
+```powershell
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip show pyspark
+```
+
+`pyspark` phải là **3.5.3**.
+
+**Bước 4 — Tạo `python3.exe`.** Spark (JVM) spawn worker bằng tên `python3`.
+Windows `ProcessBuilder` **không** chạy `python3.bat` nếu không có shell.
+
+```powershell
+Copy-Item .\.venv311\Scripts\python.exe .\.venv311\Scripts\python3.exe
+Test-Path .\.venv311\Scripts\python3.exe
+```
+
+`config.py` cũng copy tự động khi chạy script, nhưng làm tay một lần tránh lỗi
+lần chạy đầu.
+
+> **Luôn gọi** `.\.venv311\Scripts\python.exe` **khi chạy pipeline**, kể cả khi
+> đã `activate`. Tránh nhầm sang Python 3.12 của hệ thống.
+
+---
+
+### 1.4 Tải dữ liệu CSV
+
+Từ <https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-from-multi-category-store>
+tải hai file, đặt **đúng tên**:
+
+```
+E-commerce\Data\raw\2019-Oct.csv
+E-commerce\Data\raw\2019-Nov.csv
+```
+
+Kiểm tra:
+
+```powershell
+Get-ChildItem Data\raw\*.csv | Select-Object Name, @{N='GB';E={[math]::Round($_.Length/1GB,2)}}
+```
+
+Kỳ vọng khoảng **5,3 GB** (Oct) và **8,4 GB** (Nov). Thiếu file → `Data_collect.py` dừng.
+
+---
+
+### 1.5 Checklist trước khi chạy pipeline
+
+Mở **PowerShell mới**, `cd` vào `E-commerce`, chạy hết khối này. Mọi dòng phải
+`True` / in đúng phiên bản:
+
+```powershell
+cd C:\Users\Admin\Documents\CaoHoc\BigData\E-commerce
+
+java -version
+echo "JAVA_HOME=$env:JAVA_HOME"
+echo "HADOOP_HOME=$env:HADOOP_HOME"
+
+Test-Path D:\Metadata\hadoop\bin\winutils.exe
+Test-Path D:\Metadata\hadoop\bin\hadoop.dll
+Test-Path "$env:JAVA_HOME\bin\hadoop.dll"
+
+.\.venv311\Scripts\python.exe --version
+Test-Path .\.venv311\Scripts\python3.exe
+Test-Path Data\raw\2019-Oct.csv
+Test-Path Data\raw\2019-Nov.csv
+
+New-Item -ItemType Directory -Force -Path Data\logs | Out-Null
+```
+
+### 1.6 Nếu thiếu `winutils`
+
+`setup_spark()` in `[WARN] Không tìm thấy winutils.exe`. Job vẫn chạy phần đọc CSV
+nhưng **ghi Parquet thất bại** — `Data/bronze/` rỗng. Quay lại mục 1.2, không bỏ qua.
+
+---
 
 ## 2. Dữ liệu
 
@@ -49,33 +259,85 @@ Tải tại: <https://www.kaggle.com/datasets/mkechinov/ecommerce-behavior-data-
 Schema gốc (9 cột): `event_time`, `event_type`, `product_id`, `category_id`,
 `category_code`, `brand`, `price`, `user_id`, `user_session`.
 
-## 3. Chạy pipeline
+## 3. Chạy pipeline tuần tự
 
-```bash
-cd E-commerce
-.\.venv311\Scripts\python.exe Data_collect.py    # 1.1 + 1.2  (~2 phút)
-.\.venv311\Scripts\python.exe Data_cleaning.py   # 1.3        (~12 phút)
-.\.venv311\Scripts\python.exe Data_CDC.py        # 1.4        (~10 phút)
-.\.venv311\Scripts\python.exe Data_Silver.py     # 2          (~11 phút)
-.\.venv311\Scripts\python.exe Data_Verify.py     # 2          (~1,5 phút)
-.\.venv311\Scripts\python.exe Data_Gold.py       # 3          (~1,5 phút)
-.\.venv311\Scripts\python.exe Data_Dashboard.py  # 4          (~1 phút)
-.\.venv311\Scripts\python.exe Data_Architecture.py # 4        (~2 giây) sơ đồ kiến trúc
+**Quy tắc:** chạy **từng lệnh, đợi xong, xem log**, rồi mới lệnh sau.
+Không chạy song song. Script sau đọc **file trên đĩa** do script trước ghi ra.
+
+Mở PowerShell:
+
+```powershell
+cd C:\Users\Admin\Documents\CaoHoc\BigData\E-commerce
+New-Item -ItemType Directory -Force -Path Data\logs | Out-Null
 ```
 
-Muốn lưu lại log thực thi thì thêm `| Tee-Object Data\logs\<tên>_run.log`, ví dụ:
+Dùng **đúng** interpreter venv. `2>&1 | Tee-Object` vừa in ra màn hình vừa lưu log
+(ghi đè log cũ — đúng ý, chỉ giữ 1 bản chạy thành công).
 
-```bash
-.\.venv311\Scripts\python.exe Data_cleaning.py 2>&1 | Tee-Object Data\logs\cleaning_run.log
+| # | Lệnh | Giai đoạn | Thời gian máy 16 GB | Đọc từ | Ghi ra | Thành công khi |
+|---|---|---|---|---|---|---|
+| 1 | `Data_collect.py` | 1.1–1.2 EDA | ~2–6 phút | `Data/raw/*.csv` | không (chỉ in console) | In schema 9 cột, ~110 triệu dòng, đếm NULL |
+| 2 | `Data_cleaning.py` | 1.3 Bronze | ~12 phút | raw CSV | `Data/bronze/oct_2019.parquet`, `nov_2019.parquet` | Hai thư mục Parquet không rỗng; min/max time đúng Oct/Nov UTC |
+| 3 | `Data_CDC.py` | 1.4 CDC | ~10 phút | Bronze | `Data/bronze/cdc/*.parquet` | Có `product_cdc`, `category_cdc`, `user_cdc` |
+| 4 | `Data_Silver.py` | 2 Star schema | ~11 phút | Bronze + CDC | `Data/silver/{fact_event,dim_*}` | 3 kiểm tra khóa ngoại = 0 orphan |
+| 5 | `Data_Verify.py` | 2 kiểm chứng | ~1–2 phút | Silver (đĩa) | không | In lại 0 orphan, timezone khớp |
+| 6 | `Data_Gold.py` | 3 KPI | ~1,5 phút | Silver | `Data/gold/kpi_*` | 8 thư mục KPI |
+| 7 | `Data_Dashboard.py` | 4 biểu đồ | ~1 phút | Gold | `Data/dashboard/*.png` + `*.csv` | 7 PNG phân tích + CSV |
+| 8 | `Data_Architecture.py` | 4 sơ đồ | ~2 giây | (số liệu cứng trong code, khớp pipeline) | `00_*.png`, `01_mo_hinh_sao_silver.png` | 2 PNG kiến trúc |
+
+Copy từng khối (không dán cả 8 lệnh một lúc lần đầu, dễ khó debug):
+
+```powershell
+.\.venv311\Scripts\python.exe Data_collect.py      2>&1 | Tee-Object Data\logs\collect_run.log
 ```
 
-> **Luôn dùng `.venv311`.** PySpark 3.5.3 **không** hỗ trợ Python 3.12+
-> (thiếu module `distutils`) — mọi tác vụ cần Python Worker của Spark sẽ crash với
-> `Python worker exited unexpectedly`.
+```powershell
+.\.venv311\Scripts\python.exe Data_cleaning.py     2>&1 | Tee-Object Data\logs\cleaning_run.log
+```
 
-> **Chạy theo đúng thứ tự.** `Data_Silver.py` đọc kết quả CDC từ `Data/bronze/cdc/`,
-> nên phải chạy `Data_CDC.py` trước. `Data_Gold.py` đọc `Data/silver/`,
-> `Data_Dashboard.py` đọc `Data/gold/`.
+```powershell
+.\.venv311\Scripts\python.exe Data_CDC.py          2>&1 | Tee-Object Data\logs\cdc_run.log
+```
+
+```powershell
+.\.venv311\Scripts\python.exe Data_Silver.py       2>&1 | Tee-Object Data\logs\silver_run.log
+```
+
+```powershell
+.\.venv311\Scripts\python.exe Data_Verify.py       2>&1 | Tee-Object Data\logs\verify_run.log
+```
+
+```powershell
+.\.venv311\Scripts\python.exe Data_Gold.py         2>&1 | Tee-Object Data\logs\gold_run.log
+```
+
+```powershell
+.\.venv311\Scripts\python.exe Data_Dashboard.py    2>&1 | Tee-Object Data\logs\dashboard_run.log
+```
+
+```powershell
+.\.venv311\Scripts\python.exe Data_Architecture.py 2>&1 | Tee-Object Data\logs\architecture_run.log
+```
+
+Khi đã chắc môi trường, có thể chạy cả chuỗi (vẫn tuần tự, dừng nếu lệnh trước lỗi):
+
+```powershell
+$py = ".\.venv311\Scripts\python.exe"
+& $py Data_collect.py      2>&1 | Tee-Object Data\logs\collect_run.log
+& $py Data_cleaning.py     2>&1 | Tee-Object Data\logs\cleaning_run.log
+& $py Data_CDC.py          2>&1 | Tee-Object Data\logs\cdc_run.log
+& $py Data_Silver.py       2>&1 | Tee-Object Data\logs\silver_run.log
+& $py Data_Verify.py       2>&1 | Tee-Object Data\logs\verify_run.log
+& $py Data_Gold.py         2>&1 | Tee-Object Data\logs\gold_run.log
+& $py Data_Dashboard.py    2>&1 | Tee-Object Data\logs\dashboard_run.log
+& $py Data_Architecture.py 2>&1 | Tee-Object Data\logs\architecture_run.log
+```
+
+**Không đảo thứ tự.** `Data_Silver.py` cần `Data/bronze/cdc/`. `Data_Gold.py` cần
+`Data/silver/`. `Data_Dashboard.py` cần `Data/gold/`.
+
+Chỉ chạy lại **từ bước bị lỗi trở đi** (ví dụ sửa Gold thì không cần cleaning lại).
+Muốn làm sạch tầng rồi tính lại: xóa thư mục tầng đó rồi chạy đúng script ghi tầng đó.
 
 ### 3.1 Luồng dữ liệu — mỗi script là input của script sau
 
