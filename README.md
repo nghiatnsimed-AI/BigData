@@ -254,6 +254,30 @@ Data/raw/*.csv
   → Data_Architecture.py     → 2 PNG kiến trúc
 ```
 
+### 5.1 Chỉ cần 2 file CSV — mọi thứ còn lại tự sinh ra
+
+**Đúng vậy.** Hai file `2019-Oct.csv` và `2019-Nov.csv` là **toàn bộ đầu vào**.
+Tất cả tầng Bronze, Silver, Gold, biểu đồ, sơ đồ đều do code tự tạo ra:
+
+| Script | Đọc vào | Tự sinh ra |
+|---|---|---|
+| `Data_collect.py` | `Data/raw/2019-Nov.csv` | — (chỉ in EDA ra console) |
+| `Data_cleaning.py` | cả 2 file CSV | `Data/bronze/oct_2019.parquet`, `nov_2019.parquet` |
+| `Data_CDC.py` | Bronze parquet | `Data/bronze/cdc/` — 3 Parquet + 3 CSV |
+| `Data_Silver.py` | Bronze + CDC | `Data/silver/` — `fact_event` + 3 bảng chiều |
+| `Data_Verify.py` | Silver parquet | — (chỉ kiểm chứng) |
+| `Data_Gold.py` | Silver parquet | `Data/gold/` — 8 bảng KPI |
+| `Data_Dashboard.py` | Gold parquet | `Data/dashboard/` — 9 PNG + 8 CSV |
+| `Data_Architecture.py` | không đọc data | 2 PNG sơ đồ kiến trúc |
+
+Các thư mục đích (`bronze/`, `silver/`, `gold/`, `dashboard/`) được script tự
+tạo bằng `os.makedirs(..., exist_ok=True)` — không cần chuẩn bị trước.
+
+**Lưu ý khi gửi:**
+- Tên file phải đúng `2019-Oct.csv` / `2019-Nov.csv`, đặt trong `E-commerce/Data/raw/`.
+- `Data_Architecture.py` vẽ sơ đồ từ số liệu ghi cứng trong code → sơ đồ vẫn
+  đúng dù chạy trên máy khác, không phụ thuộc dữ liệu.
+
 ---
 
 ## Không đẩy lên Git

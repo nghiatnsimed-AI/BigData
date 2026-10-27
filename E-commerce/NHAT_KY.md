@@ -1083,5 +1083,35 @@ tầng Gold Parquet (~20 MB) lên Git, dù nhẹ. Người khác tự chạy `Da
 - Sửa số liệu dung lượng: bronze 4,5 → 4,6 GB, silver 4,1 → 4,2 GB.
 - `E-commerce/README.md` mục 13.1 (mới): bảng "cần gửi / cách / dung lượng".
 
+---
+
+## MỐC 11 — Xác nhận: chỉ 2 file CSV là đầu vào (27/10/2026)
+
+**Câu hỏi của user:** "chỉ cần đưa 2 file CSV là được hả, chạy code sẽ tự sinh
+ra mấy file còn lại hả?"
+
+**Đã kiểm tra lại từng script** (grep mọi lệnh `read`/`write`):
+
+| Script | Đọc | Tự sinh |
+|---|---|---|
+| `Data_collect.py` | `Data/raw/2019-Nov.csv` | — |
+| `Data_cleaning.py` | cả 2 CSV | Bronze 2 thư mục Parquet |
+| `Data_CDC.py` | Bronze | `bronze/cdc/` 3 Parquet + 3 CSV |
+| `Data_Silver.py` | Bronze + CDC | `silver/` fact_event + 3 dim |
+| `Data_Verify.py` | Silver | — |
+| `Data_Gold.py` | Silver | `gold/` 8 bảng KPI |
+| `Data_Dashboard.py` | Gold | `dashboard/` 9 PNG + 8 CSV |
+| `Data_Architecture.py` | không đọc data | 2 PNG sơ đồ |
+
+**Kết luận: đúng.** 2 CSV là toàn bộ đầu vào. Mọi thư mục đích được tạo tự động
+bằng `os.makedirs(..., exist_ok=True)` (Gold, Silver, CDC, dashboard) → người
+nhận chỉ cần có `Data/raw/` là chạy được.
+
+**Lưu ý thêm:** `Data_Architecture.py` vẽ sơ đồ từ số liệu ghi cứng trong code,
+không đọc dữ liệu → sơ đồ vẫn đúng dù chạy trên máy khác.
+
+**Ghi:** `BigData/README.md` mục 5.1 (mới) + `E-commerce/README.md` mục 13.1.
+
+
 
 

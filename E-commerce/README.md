@@ -692,3 +692,7 @@ tổng hợp, báo cáo Word đều có trên đó. Riêng **dữ liệu gốc (
 Người nhận làm mục 1 (Java, winutils, venv) → mục 4 (tải CSV) → mục 5 (chạy
 tuần tự) là chạy được toàn bộ pipeline.
 
+**Chỉ cần gửi 2 file CSV** (`2019-Oct.csv`, `2019-Nov.csv`) — toàn bộ tầng
+Bronze/Silver/Gold, biểu đồ và sơ đồ đều tự sinh ra khi chạy code.
+Xem mục 5.1 ở `BigData/README.md` để biết script nào đọc gì, sinh ra gì.
+
