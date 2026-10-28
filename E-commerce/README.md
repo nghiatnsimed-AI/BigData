@@ -339,6 +339,29 @@ $py = ".\.venv311\Scripts\python.exe"
 Chỉ chạy lại **từ bước bị lỗi trở đi** (ví dụ sửa Gold thì không cần cleaning lại).
 Muốn làm sạch tầng rồi tính lại: xóa thư mục tầng đó rồi chạy đúng script ghi tầng đó.
 
+### 3.0 Cách nhanh: 1 lệnh chạy cả pipeline
+
+Đã có sẵn 2 script batch, tự kiểm tra môi trường, ghi log, in thời gian từng
+bước và **dừng ngay** nếu 1 bước lỗi:
+
+```powershell
+.\run_all.ps1                              # PowerShell
+.\.venv311\Scripts\python.exe run_all.py    # Python (chạy được trên Linux/Mac)
+```
+
+Chạy lại từ một bước bất kỳ:
+
+```powershell
+.\run_all.ps1 -From 4                        # từ Data_Silver.py trở đi
+.\run_all.ps1 -Only gold                     # chỉ Data_Gold.py
+.\.venv311\Scripts\python.exe run_all.py --from 4
+.\.venv311\Scripts\python.exe run_all.py --only gold
+```
+
+Tên bước: `collect`, `cleaning`, `cdc`, `silver`, `verify`, `gold`, `dashboard`,
+`architecture`.
+
+
 ### 3.1 Luồng dữ liệu — mỗi script là input của script sau
 
 ```
@@ -537,8 +560,11 @@ Loyal 194.732 · At Risk 254.093 · Regular 93.196.
 | `Data_Gold.py` | Giai đoạn 3 — tổng hợp KPI, ghi tầng Gold |
 | `Data_Dashboard.py` | Giai đoạn 4 — xuất biểu đồ và bảng CSV |
 | `Data_Architecture.py` | Vẽ sơ đồ kiến trúc tổng thể và mô hình sao Silver (PNG) |
+| `run_all.ps1` | Batch runner PowerShell — 1 lệnh chạy cả 8 bước |
+| `run_all.py` | Batch runner Python (cross-platform) — cùng logic với `run_all.ps1` |
 | `NHAT_KY.md` | Nhật ký quy trình, lý do thiết kế, bài học từ lỗi |
 | `PHAN_1_QUY_TRINH_HUONG_DAN.md` | Hướng dẫn triển khai chi tiết Phần 1 (Storage → Processing) |
+| `run_all.ps1` / `run_all.py` | Batch runner — chạy 8 bước tuần tự, tự dừng khi lỗi |
 
 ---
 
@@ -558,6 +584,7 @@ Không nên mở file ngẫu nhiên. Bảng dưới đây là thứ tự đọc 
 | 7 | `Data_Gold.py` | ~447 | 8 bảng KPI | ⭐⭐ |
 | 8 | `Data_Dashboard.py` | ~340 | Vẽ 7 biểu đồ từ tầng Gold | ⭐⭐ |
 | 9 | `Data_Architecture.py` | ~330 | Vẽ 2 sơ đồ kiến trúc | ⭐ |
+| 10 | `run_all.ps1` / `run_all.py` | ~130 / ~130 | Batch runner — thứ tự chạy, kiểm tra môi trường, xử lý lỗi | ⭐⭐ |
 
 Sau khi đọc xong mã nguồn, đọc tiếp theo thứ tự:
 
@@ -672,7 +699,8 @@ file (venv + `.pyc` + `.idea`) thì push sẽ fail hoặc repo phình không dù
 | 2 | 9 script `.py` + `requirements.txt` | Mã nguồn pipeline |
 | 3 | `README.md`, `NHAT_KY.md`, `PHAN_1_...md` | Tài liệu |
 | 4 | PNG dashboard, CSV KPI nhỏ, log, `.docx` | Minh chứng kết quả, không gồm Parquet |
-| 5 | Tài liệu học phần ở thư mục gốc (nếu cần) | Đề bài / chương — file nhỏ |
+| 5 | `run_all.ps1`, `run_all.py` | Batch runner — 1 lệnh chạy cả pipeline |
+| 6 | Tài liệu học phần ở thư mục gốc (nếu cần) | Đề bài / chương — file nhỏ |
 
 Clone máy khác: tải CSV Kaggle vào `Data/raw/`, tạo venv, chạy pipeline theo mục 3.
 

@@ -1145,6 +1145,49 @@ cần chạy CDC xong chạy Silver là tự tạo folder và file đúng không
 5.3 (thứ tự phụ thuộc + bảng "muốn làm gì → chạy lại từ đâu"), đổi mục cũ
 5.1 → 5.4. `E-commerce/README.md` mục 13.1 cập nhật tham chiếu 5.1 → 5.1–5.4.
 
+---
+
+## MỐC 13 — Script batch `run_all.ps1` / `run_all.py` (28/10/2026)
+
+**Câu hỏi của user:** "chỉ cần chạy code là được hả?"
+
+**Đã kiểm tra môi trường hiện tại — đã sẵn sàng 100%, không cần cài gì thêm:**
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Java | 17.0.12 LTS ✓ |
+| `JAVA_HOME` | `D:\Metadata\jdk-17.0.12` ✓ |
+| `HADOOP_HOME` | `D:\Metadata\hadoop` ✓ |
+| `winutils.exe` + `hadoop.dll` | ✓ (có cả trong `$JAVA_HOME\bin`) |
+| venv `.venv311` | Python 3.11.9 ✓ |
+| `python3.exe` trong venv | ✓ |
+| pyspark / pandas | 3.5.3 / 3.1.0 ✓ |
+| 2 file CSV | 5,28 GB + 8,39 GB ✓ |
+| Output hiện có | Silver 4 thư mục, Gold 8 bảng, Dashboard 9 PNG ✓ |
+
+**Nhưng phát hiện 1 điểm bất tiện:** phải gõ 8 lệnh, đúng thứ tự, không được
+song song (script sau đọc file trên đĩa do script trước ghi). Dễ sai, dễ mất
+thời gian, và khi lỗi thì không biết dừng ở đâu.
+
+**→ Đã tạo 2 script batch:**
+
+1. `E-commerce/run_all.ps1` (PowerShell) — kiểm tra môi trường, chạy 8 bước
+   tuần tự, ghi log `Data/logs/`, in thời gian từng bước, **dừng ngay** nếu 1
+   bước fail. Tham số: `-From <n>` (chạy lại từ bước n), `-Only <tên>` (1 bước).
+2. `E-commerce/run_all.py` (Python, cross-platform) — cùng logic, dùng
+   `subprocess.Popen` + pipe để vừa hiện màn hình vừa ghi log. Tham số:
+   `--from <n>`, `--only <tên>`.
+
+**Đã kiểm thử cả 2** với `-Only architecture` → exit 0, sinh đúng 2 PNG.
+
+**Quyết định thiết kế:** batch runner **dừng ngay** khi 1 bước fail, không
+chạy tiếp — vì nếu chạy tiếp thì các bước sau sẽ đọc dữ liệu cũ và tạo ra
+kết quả sai mà không báo lỗi. Đây là cùng nguyên tắc với mục 5.3 (thứ tự phụ
+thuộc).
+
+**Ghi:** `BigData/README.md` mục 5.0 (cách nhanh) + mục 6.4 (danh mục file).
+
+
 
 
 

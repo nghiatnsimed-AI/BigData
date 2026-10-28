@@ -240,6 +240,39 @@ không đảo thứ tự. Script sau đọc file trên đĩa do script trước 
 
 Lần đầu: chạy **từng dòng**, không dán cả 8. Lỗi thì sửa rồi chạy lại **từ bước đó trở đi**.
 
+### 5.0 Cách nhanh: 1 lệnh chạy cả pipeline (khuyên dùng)
+
+Thay vì gõ 8 lệnh, dùng script batch đã kiểm thử:
+
+```powershell
+cd C:\Users\Admin\Documents\CaoHoc\BigData\E-commerce
+
+# Chạy cả 8 bước, tự dừng ngay khi 1 bước lỗi
+.\run_all.ps1
+
+# Hoặc dùng Python (không phụ thuộc PowerShell, chạy được trên Linux/Mac)
+.\.venv311\Scripts\python.exe run_all.py
+```
+
+Cả 2 script đều: **kiểm tra môi trường trước** (JAVA_HOME, winutils, 2 file CSV),
+ghi log vào `Data/logs/`, in thời gian từng bước, và **dừng ngay** nếu một bước
+fail (không chạy tiếp đọc dữ liệu cũ).
+
+Chạy lại từ một bước bất kỳ:
+
+```powershell
+.\run_all.ps1 -From 4              # từ Data_Silver.py trở đi
+.\run_all.ps1 -Only gold           # chỉ Data_Gold.py
+.\.venv311\Scripts\python.exe run_all.py --from 4
+.\.venv311\Scripts\python.exe run_all.py --only gold
+```
+
+Tên bước hợp lệ: `collect`, `cleaning`, `cdc`, `silver`, `verify`, `gold`,
+`dashboard`, `architecture`.
+
+> **Lần chạy đầu tiên** nên dùng `-Only` từng bước để xem log chi tiết. Sau khi
+> đã hiểu, dùng `.\run_all.ps1` cho các lần chạy lại sau.
+
 Luồng:
 
 ```
@@ -391,5 +424,19 @@ cd C:\Users\Admin\Documents\CaoHoc\BigData
 git status                      # phải "working tree clean"
 git log --oneline -3
 ```
+
+### 6.4 Các file trong `E-commerce/`
+
+| File | Vai trò |
+|---|---|
+| `config.py` | Đường dẫn + `setup_spark()` dùng chung cho mọi script |
+| `Data_collect.py` … `Data_Architecture.py` | 8 script của pipeline (chạy tuần tự) |
+| `run_all.ps1` | Batch runner cho PowerShell — 1 lệnh chạy cả pipeline |
+| `run_all.py` | Batch runner cho Python (chạy được trên Linux/Mac) |
+| `requirements.txt` | 4 gói: pyspark, pandas, pyarrow, matplotlib |
+| `README.md` | Kiến trúc, KPI, nhật ký lỗi chi tiết |
+| `NHAT_KY.md` | Nhật ký dự án — mọi mốc, bug đã gặp và cách sửa |
+| `PHAN_1_QUY_TRINH_HUONG_DAN.md` | Hướng dẫn chi tiết cho người mới bắt đầu |
+| `BaoCao_TienDo_BigData.docx` | Báo cáo tiến độ (deliverable) |
 
 Kiến trúc, KPI, nhật ký lỗi: [`E-commerce/README.md`](E-commerce/README.md).
