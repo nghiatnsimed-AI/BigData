@@ -694,5 +694,6 @@ tuần tự) là chạy được toàn bộ pipeline.
 
 **Chỉ cần gửi 2 file CSV** (`2019-Oct.csv`, `2019-Nov.csv`) — toàn bộ tầng
 Bronze/Silver/Gold, biểu đồ và sơ đồ đều tự sinh ra khi chạy code.
-Xem mục 5.1 ở `BigData/README.md` để biết script nào đọc gì, sinh ra gì.
+Xem mục 5.1–5.4 ở `BigData/README.md` để biết: chạy lại có đè dữ liệu cũ không,
+thư mục có tự tạo không, thứ tự phụ thuộc giữa các tầng, và script nào đọc gì.
 

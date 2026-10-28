@@ -1112,6 +1112,40 @@ không đọc dữ liệu → sơ đồ vẫn đúng dù chạy trên máy khác
 
 **Ghi:** `BigData/README.md` mục 5.1 (mới) + `E-commerce/README.md` mục 13.1.
 
+---
+
+## MỐC 12 — Xác nhận hành vi ghi đè + thứ tự phụ thuộc giữa các tầng (28/10/2026)
+
+**Câu hỏi của user:** "chạy lại từ đầu thì có đè lên data cũ không; Silver chỉ
+cần chạy CDC xong chạy Silver là tự tạo folder và file đúng không?"
+
+**Đã grep toàn bộ `mode(` / `write.` / `makedirs` trong 8 script:**
+
+1. **Ghi đè: đúng, sạch.** Mọi lệnh ghi đều `mode("overwrite")` —
+   Bronze (`partitionBy(year, month)`), CDC (3 Parquet + 3 CSV), Silver (fact_event
+   + 3 dim), Gold (8 bảng). Dashboard/Architecture dùng `savefig` / `to_csv` nên
+   ghi đè file cùng tên. Kèm `partitionOverwriteMode = dynamic` trong `config.py`
+   → Spark chỉ xoá partition bị ảnh hưởng.
+   → **Chạy lại idempotent, không cần xoá thủ công.**
+
+2. **Tự tạo thư mục: đúng.** `os.makedirs(..., exist_ok=True)` cho `silver/`,
+   `bronze/cdc/`, `gold/`, `dashboard/`.
+
+3. **Phát hiện quan trọng về thứ tự phụ thuộc.** `Data_Silver.py` **đọc**
+   `bronze/cdc/product_cdc.parquet` và `user_cdc.parquet` (dòng 295–296) để gắn
+   nhãn `change_type` / `user_status` vào bảng chiều → **bắt buộc chạy CDC trước
+   Silver**. `Data_Gold.py` đọc `silver/`, `Data_Dashboard.py` đọc `gold/`.
+
+4. **Cảnh báo về thứ tự xoá thư mục.** Xoá `bronze/` mà quên `bronze/cdc/` →
+   `Data_Silver.py` **crash**. Xoá `silver/` mà giữ `gold/` → không lỗi nhưng
+   `gold/` là dữ liệu cũ, không tái lập được. Nguyên tắc: **xoá tầng nào thì
+   xoá luôn các tầng bên dưới**, và chạy lại từ tầng đó trở xuống.
+
+**Ghi:** `BigData/README.md` thêm mục 5.1 (ghi đè), 5.2 (tự tạo thư mục),
+5.3 (thứ tự phụ thuộc + bảng "muốn làm gì → chạy lại từ đâu"), đổi mục cũ
+5.1 → 5.4. `E-commerce/README.md` mục 13.1 cập nhật tham chiếu 5.1 → 5.1–5.4.
+
+
 
 
 

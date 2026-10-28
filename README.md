@@ -254,7 +254,50 @@ Data/raw/*.csv
   → Data_Architecture.py     → 2 PNG kiến trúc
 ```
 
-### 5.1 Chỉ cần 2 file CSV — mọi thứ còn lại tự sinh ra
+### 5.1 Chạy lại có đè lên dữ liệu cũ không? → Có, đè sạch
+
+Mọi lệnh ghi đều dùng `mode("overwrite")`, nên **chạy lại là idempotent** —
+không dính dữ liệu cũ, không cần xoá thủ công:
+
+| Script | Ghi vào | Cách ghi |
+|---|---|---|
+| `Data_cleaning.py` | `bronze/oct_2019.parquet`, `nov_2019.parquet` | `overwrite` + `partitionBy(year, month)` |
+| `Data_CDC.py` | `bronze/cdc/*.parquet` + 3 thư mục `*_csv/` | `overwrite` |
+| `Data_Silver.py` | `silver/fact_event` + 3 bảng chiều | `overwrite` |
+| `Data_Gold.py` | `gold/` — 8 bảng KPI | `overwrite` |
+| `Data_Dashboard.py` | `dashboard/*.png` (savefig) + `*.csv` (to_csv) | ghi đè file cùng tên |
+| `Data_Architecture.py` | 2 PNG sơ đồ kiến trúc | ghi đè file cùng tên |
+
+`config.py` bật `spark.sql.sources.partitionOverwriteMode = dynamic` → Spark chỉ
+xoá/ghi lại partition bị ảnh hưởng, không cần dọn thư mục trước.
+
+### 5.2 Thư mục có tự tạo không? → Có
+
+Mọi script gọi `os.makedirs(..., exist_ok=True)` cho thư mục đích:
+`silver/`, `bronze/cdc/`, `gold/`, `dashboard/` (Bronze tạo qua `partitionBy`).
+`exist_ok=True` nên không lỗi nếu thư mục đã tồn tại.
+
+### 5.3 Thứ tự phụ thuộc — xoá tầng nào thì xoá từ tầng đó trở xuống
+
+```
+Raw → Bronze → CDC → Silver → Gold → Dashboard
+```
+
+`Data_Silver.py` **đọc** `bronze/cdc/*.parquet` (để gắn nhãn `change_type`,
+`user_status` vào bảng chiều) → **bắt buộc chạy CDC trước Silver**.
+Tương tự, `Data_Gold.py` đọc `silver/`, `Data_Dashboard.py` đọc `gold/`.
+
+| Bạn muốn | Phải chạy lại từ đâu |
+|---|---|
+| Xoá sạch, chạy lại toàn bộ | `Data_collect.py` (đầy đủ 8 bước) |
+| Chỉ đổi cách tính KPI | `Data_Gold.py` → `Data_Dashboard.py` |
+| Chỉ đổi cách làm sạch | `Data_cleaning.py` → `Data_CDC.py` → `Data_Silver.py` → `Data_Verify.py` → `Data_Gold.py` → `Data_Dashboard.py` |
+
+> **Xoá thư mục theo thứ tự ngược:** muốn xoá `silver/` thì xoá luôn `gold/` và
+> `dashboard/`. Xoá `bronze/` mà quên `bronze/cdc/` thì `Data_Silver.py` sẽ
+> **crash** vì không đọc được file CDC.
+
+### 5.4 Chỉ cần 2 file CSV — mọi thứ còn lại tự sinh ra
 
 **Đúng vậy.** Hai file `2019-Oct.csv` và `2019-Nov.csv` là **toàn bộ đầu vào**.
 Tất cả tầng Bronze, Silver, Gold, biểu đồ, sơ đồ đều do code tự tạo ra:
